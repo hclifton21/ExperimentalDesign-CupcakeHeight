@@ -1,0 +1,614 @@
+---
+title: "Pillsbury Funfetti Cupcakes: Determining the Relationship  \n between Oven Temperature and Cupcake Height."
+subtitle: "STAT 441 - Project 1"
+author: "Harley Clifton, Kyle Rutten, & Madelaine Brown"
+date: "March 30, 2022"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE)
+
+# Library relevant packages
+library(yarrr)
+library(ggplot2)
+library(ggthemes)
+library(tidyverse)
+library(knitr)
+library(gtsummary)
+library(multcomp)
+library(effects)
+theme_set(theme_bw()) 
+```
+
+
+
+# Project Scaffolding
+
+$~$
+
+## 1. Define objectives  
+  
+Determine the relationship between oven temperature (in degrees Fahrenheit) and Pillsbury Funfetti cupcake rise (in cm) for Harley's Oven.
+
+$~$
+
+## 2. Define meaningful and measurable response  
+
+The average height of Pillsbury Funfetti cucpcakes in each batch (measured in cm).
+
+We think a meaningful difference in cupcake height would be a 1/2 cm.
+
+$~$
+
+## 3. Diagram treatment application process for a single run  
+
+**Experimental Steps:**
+
+1. Preheat Oven to 325$^{\circ}$F
+
+2. Prepare Pillsbury Funfetti cake mix as directed on box (1 cup water, 1/2 cup [crisco] vegetable oil, and 3 [winco] eggs). Mix until no lumps remain.
+
+3. Place cucpcake liners [Smith's] into muffin pan. Fill each liner with exactly 1/4 cup of prepared batter.
+
+4. Place muffin tray in center of oven with 'goodcook' logo to the right hand side. 
+
+5. Bake for 19 minutes.
+
+6. Remove tray from oven and let cool for 5 minutes.
+
+7. Measure cupcake height in cm by inserting a wooden skewer into center of each cupcake (beginning with the top left cucpacke and ending with the bottom right cupcake, moving left to right), making a mark at the peak (with a different color for each cupcake), and measure the length from the tip of the skewer to the mark using a ruler. Record this data in a spreadsheet, along with temperature and position in pan.
+
+8. Preheat Oven to 350$^{\circ}$F, and repeat steps 3 through 7.
+
+9. Preheat Oven to 375$^{\circ}$F, and repeat steps 3 through 7.
+
+10. Preheat Oven to 300$^{\circ}$F, and repeat steps 3 through 7.  
+
+
+$~$
+
+## 4. Identify experimental units  
+
+Our **experimental units** are each pan (batch) of 6 cupcakes.
+
+Our **observational units** are the same as our experimental units since we are analyzing the average height of each batch.
+
+
+$~$
+
+## 5. List sources of variation
+
+**Ones we did control for:**  
+* pan    
+* type of cupcake liners    
+* type of eggs and vegetable oil  
+* placement in pan (recorded in spreadsheet)    
+* amount of batter in each one (1/4 cup)    
+* type of batter (Pillsbury Funfetti)     
+* cooling time before measuring height (5 minutes)    
+* time in oven (19 min)    
+* oven (the oven in Harley's apartment)    
+* method of measuring cupcake height  
+* Oven light (on)  
+* Elevation (Bozeman, MT)
+* Personal variation in measurement (controlled for by Harley mix the batter each time, Maddy measures the amount of batter in each cupcake liner, Maddy marks the skewer each time, and Kyle measures the skewer markings)  
+
+**Ones we can't control for:**  
+* Amount and location of sprinkles in each individual cupcake    
+* Fluctuations in oven temperature while baking   
+* Angle the skewer is inserted at to measure height of each cupcake   
+* Exact amounts of dry ingredients in cupcake mix    
+* Environmental factors such as humidity and ambient temperature  
+* Time the batter set out at room temperature before baking each individual batch  
+
+$~$
+
+## 6. Perform pilot runs
+
+From our pilot runs, we collected data on: study, temperature, batch number, position in muffin pan, height measurement for each cupcake, and color of marking for measurement sake.   
+
+We learned to be careful when removing the cupcakes from the tray to measure them, and that it is important to note their location in the tray. Based on the results of our pilot experiment, we suspect that Harley's oven may run hot so we decided to also add a treatment level of 300$^{\circ}$F for our experiment runs.    
+
+Lastly, we noticed in our pilot experiment data, that cupcakes in locations 1 and 2 are consistently smaller than cupcakes in the other locations in the pan. This uneven rise pattern should remain constant across all batches. Thus, running analyses on the average height of each batch of 6 cupcakes will prevent us from having to block by location in pan.  
+
+$~$
+
+## 7. Choose experimental design (i.e. randomization) 
+
+#### If We Did Randomize:
+
+We could have Randomized (1) which box mix would get which temperature assignment and/or (2) the order the individual batches were baked in the oven.
+
+```{r}
+cupcake <- tibble(EUs = 1:12, Batch = rep(1:3, 4, replace = F), 
+                  Temp = rep(c(300,325,350,375), each = 3))
+cupcake
+
+set.seed(03212022)
+trt.lvls <- 4 # four temperature levels: 300, 325, 350, 375 Fahrenheit
+replicates <- 3 # three batches baked at each temperature
+EUs <- trt.lvls * replicates
+
+# Randomizing which Box mix will get which Temp Assignment
+boxes <- data.frame(EUs = sample(1:EUs), Box = rep(1:4, each = 3))
+
+# Randomizing the Order batches are Baked in the Oven
+order <- data.frame(EUs = sample(1:EUs), Order.in.Oven = sample(1:12, replace = F))
+
+# Merging the dataframes by EUs
+cupcake.mid <- merge(cupcake, boxes, by = "EUs")
+cupcake.rand <- merge(cupcake.mid, order, by = "EUs")
+cupcake.rand
+```
+
+Theoretically, we could have also randomized the time the batter sit out at room temperature before being baked in the oven, but that would have made our experiment much more complicated.
+
+$~$
+
+## 8. Determine number of replicates required  
+
+```{r}
+# The maximum difference between individual cupcake height in our pilot study was 0.7 cm
+# We will use this as an upper bound for our standard deviation
+
+# Therefore, out estimated variance 
+est.var <- (0.7)^2
+
+# We decided a meaningful difference in cupcake height would be 0.5 cm.
+est.diff <- 0.5
+
+# If we want a power of 0.9:
+pwr <- 0.9
+n0.9 <- (2*est.var)/((est.diff/pwr)^2)
+n0.9
+
+# If we want a power of 0.8:
+pwr <- 0.8
+n0.8 <- (2*est.var)/((est.diff/pwr)^2)
+n0.8
+```
+
+Therefore, we have decided to do three batches for each temperature setting, resulting in 12 total batches.
+
+
+$~$
+
+## 9. Describe method(s) for data analysis  
+
+Since we have four distinct levels of our treatment (oven temperature), we will perform a One-Way ANOVA analysis on our results.
+
+
+$~$
+
+## 10. Timetable and budget for resources to complete experiment  
+
+```{r}
+# Cost of one Pillsbury Funfetti cake box mix
+funfetti.mix <- 1.99
+
+# Cupcake liners (plenty)
+liners <- 0.70
+
+# Crisco oil
+crisco <- 3.97
+  
+# Pack of Skewers
+skewers <- 1.00
+
+# Winco Single Eggs price
+carton18 <-  3.96 
+egg <-  carton18/18
+
+# Muffin Pan
+pan <- 6.64
+
+
+total.cost <- (4*funfetti.mix) + (2*liners) + crisco + skewers + (12*egg) + pan
+total.cost
+```
+
+**Our total cost is about $23.61.**
+
+$~$
+
+### Experiment Schedule:
+
+* we met on February 27$^{th}$ at 10:00am at Harley'c apartment to perform our pilot runs.
+
+* we met on March 12$^{th}$ at 10:00am at Harley's oven to crank out these cupcakes!
+
+* we made all remaining batches on same day (March 12$^{th}$)
+
+
+$~$
+$~$
+$~$
+
+
+
+# Preliminary Power Analysis 
+
+```{r}
+# The maximum difference between individual cupcake height in our pilot study was 0.7 cm
+# We will use this as an upper bound for our standard deviation
+
+# Therefore, our estimated variance 
+est.var <- (0.7)^2
+
+# We decided a meaningful difference in cupcake height would be 0.5 cm.
+est.diff <- 0.5
+
+# If we want a power of 0.9:
+pwr <- 0.9
+n0.9 <- (2*est.var)/((est.diff/pwr)^2)
+n0.9
+
+# If we want a power of 0.8:
+pwr <- 0.8
+n0.8 <- (2*est.var)/((est.diff/pwr)^2)
+n0.8
+```
+
+* Based on these results, we decided to make three batches at each of the temperature settings, resulting in 12 total batches.
+
+$~$
+
+## Fixing Power Calculations
+
+```{r, fig.align = 'center', out.width = "500px", fig.cap = "This figure shows the power for for detecting differences based on various alternative hypothesis (\theta) values under the specified conditions. In particular, the power for theta = 1." }
+knitr::include_graphics("Project 1 - Power Graph.png")
+```
+
+
+```{r, fig.align = 'center', out.width = "500px", fig.cap = "This figure shows the sampling distribution under the null and alternative hypotheses." }
+knitr::include_graphics("Project 1 - Sampling Distribution.png")
+```
+
+
+
+`R` code to create a simulation for the power with the following:  
+
+- Population Distribution: __Normal__
+- Test Statistic: __Sample Mean__
+- Null Value: __0__
+- Pilot Study standard deviation: __0.1732050808__
+- Alternative Hypothesis: __Not Equal to__
+- Alpha Level: __.05__
+- Sample Size: __3__
+- Theta: __0.5__
+
+The sampling distribution for the null hypothesis is 
+$$N(\mu_0,  \sigma^2/ r)= N(0,  0.03/ r)$$
+
+so the critical points are at `qnorm(.025, mean = 0, sd = sqrt(0.03/3))` = `r qnorm(.025, mean = 0, sd = sqrt(0.03/3))` and `qnorm(.975, mean = 0, sd = sqrt(0.03/3))` = `r qnorm(.975, mean = 0, sd = sqrt(0.03/3))`.
+
+```{r}
+set.seed(03032022)
+num_sims <- 100000
+r <- 3
+pilot.sd <- 0.1732050808
+pilot.var <- pilot.sd^2
+
+sample_means <- rowMeans(matrix(rnorm(num_sims * r, mean = .5, sd = pilot.sd ), 
+                                nrow = num_sims, ncol = r))
+mean(sample_means < qnorm(.025, mean = 0, sd = sqrt(pilot.var/3)) |
+       sample_means > qnorm(.975, mean = 0, sd = sqrt(pilot.var/3)) )
+```
+
+
+
+
+Assume we'd like our estimated width of our uncertainty interval to be less than 0.5. The standard deviation of the data from the pilot study is 0.173205. Estimate how many samples will be needed to achieve this precision (possibly with probability .95).
+
+```{r, fig.cap = "This figure shows the sample size detemination, assuming we'd like our estimated width of our uncertainty interval to be less than 0.5. The standard deviation of the data from the pilot study is 0.173205. Estimate how many samples will be needed to achieve this precision (possibly with probability .95)." }
+sigma <- 0.173205
+r_seq <- 1:25
+estimated_se <- sigma / sqrt(r_seq)
+interval_width <- estimated_se * 4
+combined <- tibble(r = r_seq, width = interval_width)
+combined %>% ggplot(aes(x = r_seq, y = width )) + 
+  geom_line() + theme_bw() + 
+  xlab('sample size') + ylab('uncertainty interval width') +
+  geom_hline(yintercept = 0.5, color = "blue") +
+  ggtitle("Sample Size Determination using Pilot Study Standard Deviation of 0.173205") 
+```
+
+You'd need at least _2_ samples at each temperature level to have an estimated uncertainty interval width less than 2 cm. 
+
+$~$
+
+Retrospectively, let's use the overall standard deviation of 0.245511.
+
+```{r, fig.cap = "This figure shows the sample size detemination, assuming we'd like our estimated width of our uncertainty interval to be less than 0.5. This uses the overall standard deviation of our experiment data which is 0.245511. Estimate how many samples will be needed to achieve this precision (possibly with probability .95)."}
+sigma <- 0.245511
+r_seq <- 1:25
+estimated_se <- sigma / sqrt(r_seq)
+interval_width <- estimated_se * 4
+combined2 <- tibble(r = r_seq, width = interval_width)
+combined2 %>% ggplot(aes(x = r_seq, y = width )) + 
+  geom_line() + theme_bw() + 
+  xlab('sample size') + ylab('uncertainty interval width') +
+  geom_hline(yintercept = 0.5, color = "blue") +
+  ggtitle("Sample Size Determination using Overall Experimental Std Deviation of 0.245511") 
+```
+
+You'd need at least _4_ samples at each temperature level to have an estimated uncertainty interval width less than 0.5. 
+
+
+$~$
+$~$
+$~$
+
+# Data Wrangling
+
+```{r}
+# Data Wrangling
+cupcakes <- read.csv('data/CupcakeHeights.csv')
+cupcakes <- cupcakes %>% mutate(Batch.Number = factor(Batch.Number), 
+                                Box.Number = factor(Box.Number), 
+                                Temp.F = factor(Temp.F), 
+                                Location = factor(Location))
+
+summary(cupcakes) # checking that we R is now reading those variables as factors
+
+# Subsetting Hell
+
+Batches.300 <- subset(cupcakes, Temp.F == 300)
+Batches.325 <- subset(cupcakes, Temp.F == 325)
+Batches.350 <- subset(cupcakes, Temp.F == 350)
+Batches.375 <- subset(cupcakes, Temp.F == 375)
+
+B1.300 <- subset(Batches.300, Batch.Number == 1)
+B2.300 <- subset(Batches.300, Batch.Number == 2)
+B3.300 <- subset(Batches.300, Batch.Number == 3)
+
+B1.325 <- subset(Batches.325, Batch.Number == 1)
+B2.325 <- subset(Batches.325, Batch.Number == 2)
+B3.325 <- subset(Batches.325, Batch.Number == 3)
+
+B1.350 <- subset(Batches.350, Batch.Number == 1)
+B2.350 <- subset(Batches.350, Batch.Number == 2)
+B3.350 <- subset(Batches.350, Batch.Number == 3)
+
+B1.375 <- subset(Batches.375, Batch.Number == 1)
+B2.375 <- subset(Batches.375, Batch.Number == 2)
+B3.375 <- subset(Batches.375, Batch.Number == 3)
+
+# Building up to a New Dataframe
+
+Temps <- rep(c(300, 325, 350, 375), each = 3)
+Temps
+
+Batch.Numbers <- rep(1:3, 4)
+Batch.Numbers
+
+Study <- c(rep("Experiment", 3), rep(c("Pilot", "Experiment", "Experiment"), 3))
+Study
+
+Box.Numbers <- c(B1.300$Box.Number[1],
+                 B2.300$Box.Number[1],
+                 B3.300$Box.Number[1],
+                 
+                 B1.325$Box.Number[1],
+                 B2.325$Box.Number[1],
+                 B3.325$Box.Number[1],
+                 
+                 B1.350$Box.Number[1],
+                 B2.350$Box.Number[1],
+                 B3.350$Box.Number[1],
+                 
+                 B1.375$Box.Number[1],
+                 B2.375$Box.Number[1],
+                 B3.375$Box.Number[1])
+
+Avg.Height <- c(mean(B1.300$Height.cm), mean(B2.300$Height.cm), mean(B3.300$Height.cm),
+              mean(B1.325$Height.cm), mean(B2.325$Height.cm), mean(B3.325$Height.cm),
+              mean(B1.350$Height.cm), mean(B2.350$Height.cm), mean(B3.350$Height.cm),
+              mean(B1.375$Height.cm), mean(B2.375$Height.cm), mean(B3.375$Height.cm))
+
+
+# Mix Ingredients Until Well Combined
+
+cupcakes.new <- data.frame(Study, Temps, Batch.Numbers, Box.Numbers, Avg.Height)
+summary(cupcakes.new) # oops need factors corrected
+
+cupcakes.new <- cupcakes.new %>%
+  mutate(Study = factor(Study), Temps.F = factor(Temps),
+         Batch.Numbers = factor(Batch.Numbers), Box.Numbers = factor(Box.Numbers))
+
+summary(cupcakes.new) # Yay it's fixed
+# Note: Temps is Quantitative, Temps.F is Categorical
+```
+
+
+$~$
+$~$
+$~$
+
+# Data Visualization
+
+## Pilot Study Data
+```{r}
+# Visualizing our Pilot Study Data
+
+cupcakes$Study <- as.factor(cupcakes$Study)
+summary(cupcakes)
+
+## Subsetting pilot experiment data
+cupcake.pilot <- subset(cupcakes, Study == "pilot")
+summary(cupcake.pilot)
+
+pirateplot(Height.cm ~ Temp.F, data = cupcake.pilot, 
+           main = "Violin Plot of Average Height & Oven Temperature for Pilot Study", 
+           inf.method = "ci", inf.disp = "line", 
+           ylab = "Height of Individual Cupcakes (cm)", 
+           xlab = "Oven Temperature (degrees Fahrenheit)" )
+```
+
+## Experimental Data Visualization
+
+```{r}
+# Only Batch Average Height measurements
+
+pirateplot(Avg.Height ~ Temps.F, data = cupcakes.new, 
+           main = "Violin Plot of Average Height and Oven Temperature", 
+           inf.method = "ci", inf.disp = "line", 
+           ylab = "Average Height of Batch of 6 Cupcakes (cm)", 
+           xlab = "Oven Temperature (degrees Fahrenheit)" )
+```
+
+```{r}
+# All individual Cupcake Height measurements
+
+pirateplot(Height.cm ~ Temp.F, data = cupcakes, 
+           main = "Violin Plot of Average Height and Oven Temperature", 
+           inf.method = "ci", inf.disp = "line", ylab = "Cupcake Height (cm)", 
+           xlab = "Oven Temperature (degrees Fahrenheit)")
+```
+
+
+$~$
+$~$
+$~$
+
+# Modeling our Data
+
+## Reference Case Model
+
+```{r}
+# Building our Model
+
+## Reference Case Notation
+cat.mod <- lm(Avg.Height ~ Temps.F, data = cupcakes.new)
+summary(cat.mod)
+```
+
+Reference Case Model Notation:
+
+$$\mu(AvgHeight | Temp) = 4.0222 + 0.3111 \ast I_{Temp = 325} + 0.2778 \ast I_{Temp = 350}+0.4944 \ast I_{Temp = 375} + \epsilon$$  
+
+With indicator variables defined as follows: $I_{Temp = 325} = 1$ is 1 when $Temperature = 325 ^\circ F$ and 0 otherwise, $I_{Temp = 350} = 1$ is 1 when $Temperature = 350 ^\circ F$, and 0 otherwise, and $I_{Temp = 375} = 1$ is 1 when $Temperature = 375 ^\circ F$ and 0 otherwise. Additionally, $\epsilon$ ~ $N(0, \sigma^2)$ is an error term.
+
+#### Confidence Interval for Reference Case Model Coefficients
+
+```{r, MESSAGE = F}
+cat.mod %>% tbl_regression() %>% add_global_p()
+```
+### Model Diagnostics for Reference Case Model
+```{r}
+# Standard Model Diagnostics Array
+
+par(mfrow=c(2,2))
+plot(cat.mod, pch=16)
+```
+
+
+
+
+
+## Cell Means Model
+
+```{r}
+cell.means.mod <- lm(Avg.Height ~ Temps.F - 1, data = cupcakes.new)
+summary(cell.means.mod)
+```
+
+Cell Means Model Notation:
+
+$$\mu(AvgHeight | Temp) = 4.0222 \ast I_{Temp = 300} + 4.3333 \ast I_{Temp = 325} + 4.3000 \ast I_{Temp = 350} + 4.5167 \ast I_{Temp = 375} + \epsilon$$  
+
+With indicator variables defined as follows: $I_{Temp = 300} = 1$ is 1 when $Temperature = 300 ^\circ F$ and 0 otherwise, $I_{Temp = 325} = 1$ is 1 when $Temperature = 325 ^\circ F$ and 0 otherwise, $I_{Temp = 350} = 1$ is 1 when $Temperature = 350 ^\circ F$, and 0 otherwise, and $I_{Temp = 375} = 1$ is 1 when $Temperature = 375 ^\circ F$ and 0 otherwise. Additionally, $\epsilon$ ~ $N(0, \sigma^2)$ is an error term.   
+
+
+#### Confidence Interval for Reference Case Model Coefficients
+
+```{r, MESSAGE = F}
+cell.means.mod %>% tbl_regression() %>% add_global_p()
+```
+
+
+
+### Model Diagnostics Array for Cell Means Model
+```{r}
+# Standard Model Diagnostics Array
+
+par(mfrow=c(2,2))
+plot(cell.means.mod, pch=16)
+```
+
+
+
+$~$
+$~$
+$~$
+
+# Data Analysis
+
+
+## Effects Plot
+
+```{r}
+plot(allEffects(cell.means.mod, resid = T), grid = T, 
+     main = "Effects Plot of Oven Temperature on Average Cupcake Height", 
+     xlab = "Oven Temperature (degrees Fahrenheit)", 
+     ylab = "Average Cupcake Height (cm)")
+```
+
+## Performing a One-Way ANOVA test for the Cell Means Model
+
+```{r}
+# Compute the Analysis of Variance
+cc.anova <- anova(cell.means.mod)
+
+# Summary of the analysis
+cc.anova
+```
+
+
+
+## Performing Post HOC Comparisons to determine which group means differ (Cell Means Model)
+
+```{r}
+# Tukey's HSD - POST HOC Comparisons (95% Family-Wise Confidence Level)
+post.hoc <- glht(cell.means.mod, linfct = mcp(Temps.F = "Tukey"))
+confint(post.hoc)
+```
+
+
+
+### Plotting Tukey's HSD Results
+
+```{r}
+# Plotting Tukey's HSD Results
+
+par(oma=c(2,5,1,1)) 
+par(mar=c(4,4,2,1) + 0.1)
+
+plot(post.hoc, main = "95% Family-Wise Confidence Level", 
+     xlab = "Estimated Difference in Average Cupcake Batch Height (cm)")
+title(ylab = "   Oven Temperature Comparisons", line = 3, outer = T)
+title(ylab = "(degrees Fahrenheit)",  line = 1.5, outer = T)
+title(main = "       Tukey's HSD Post Hoc Comparisons", line = 0, outer = T)
+```
+
+
+$~$
+$~$
+$~$
+
+# Citations
+
+```{r}
+citation("yarrr")
+citation("ggplot2")
+citation("multcomp")
+citation("effects")
+citation("gtsummary")
+```
+
+
+
+
+
+
