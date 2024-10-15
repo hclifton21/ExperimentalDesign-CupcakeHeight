@@ -1,0 +1,47 @@
+---
+title: "Untitled"
+author: "Harley Clifton"
+date: "3/26/2022"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+```
+
+
+```{r, fig.cap = "This figure shows the sample size detemination, assumingwe'd like our estimated width of our uncertainty interval to be less than 0.5. The standard deviation of the data from the pilot study is 0.173205. Estimate how many samples will be needed to achieve this precision (possibly with probability .95)." }
+sigma <- 0.173205
+r_seq <- 1:25
+estimated_se <- sigma / sqrt(r_seq)
+interval_width <- estimated_se * 4
+combined <- tibble(r = r_seq, width = interval_width)
+combined %>% ggplot(aes(x = r_seq, y = width )) + 
+  geom_line() + theme_bw() + 
+  xlab('sample size') + ylab('uncertainty interval width') +
+  geom_hline(yintercept = 0.5, color = "blue") +
+  ggtitle("Sample Size Determination using Pilot Study Standard Deviation of 0.173205") 
+```
+
+
+You'd need at least `r combined %>% filter(width < 0.5) %>% select(r) %>% slice(1) %>% pull()` samples to have an estimated uncertainty interval width less than 0.5. 
+
+$~$
+
+Retrospectively, let's use the overall standard deviation of 0.245511.
+
+```{r, fig.cap = "This figure shows the sample size detemination, assumingwe'd like our estimated width of our uncertainty interval to be less than 0.5. This uses the overall standard deviation of our experiment data which is 0.245511. Estimate how many samples will be needed to achieve this precision (possibly with probability .95)."}
+sigma <- 0.245511
+r_seq <- 1:25
+estimated_se <- sigma / sqrt(r_seq)
+interval_width <- estimated_se * 4
+combined2 <- tibble(r = r_seq, width = interval_width)
+combined2 %>% ggplot(aes(x = r_seq, y = width )) + 
+  geom_line() + theme_bw() + 
+  xlab('sample size') + ylab('uncertainty interval width') +
+  geom_hline(yintercept = 0.5, color = "blue") +
+  ggtitle("Sample Size Determination using Overall Experimental Std Deviation of 0.245511") 
+```
+
+You'd need at least `r combined2 %>% filter(width < 0.5) %>% select(r) %>% slice(1) %>% pull()` samples to have an estimated uncertainty interval width less than 0.5. 
