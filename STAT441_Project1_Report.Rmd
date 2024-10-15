@@ -1,0 +1,450 @@
+---
+title: "Impacts of Oven Temperature on Pillsbury Funfetti Cupcake Height"
+author: "By Harley Clifton, Madelaine Brown, and Kyle Rutten"
+output:
+  word_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+
+# Library relevant packages here
+library(yarrr)
+library(ggplot2)
+library(ggthemes)
+library(tidyverse)
+library(mosaic)
+library(yarrr)
+library(knitr)
+library(gtsummary)
+library(multcomp)
+library(effects)
+theme_set(theme_bw()) 
+```
+
+```{r Processing, echo=FALSE,results=FALSE,message=FALSE,warning=FALSE}
+# If we had randomized
+cupcake <- tibble(EUs = 1:12, Batch = rep(1:3, 4, replace = F), Temp = rep(c(300,325,350,375), each = 3))
+cupcake
+
+set.seed(03212022)
+trt.lvls <- 4 # four temperature levels: 300, 325, 350, 375 Fahrenheit
+replicates <- 3 # three batches baked at each temperature
+EUs <- trt.lvls * replicates
+
+# Randomizing which Box mix will get which Temp Assignment
+boxes <- data.frame(EUs = sample(1:EUs), Box = rep(1:4, each = 3))
+
+# Randomizing the Order batches are Baked in the Oven
+order <- data.frame(EUs = sample(1:EUs), Order.in.Oven = sample(1:12, replace = F))
+
+# Merging the data frames by EUs
+cupcake.mid <- merge(cupcake, boxes, by = "EUs")
+cupcake.rand <- merge(cupcake.mid, order, by = "EUs")
+```
+
+```{r, echo=FALSE,results=FALSE,message=FALSE,warning=FALSE}
+# Data Wrangling
+cupcakes <- read.csv('data/CupcakeHeights.csv')
+cupcakes <- cupcakes %>% mutate(Batch.Number = factor(Batch.Number), 
+                                Box.Number = factor(Box.Number), 
+                                Temp.F = factor(Temp.F), 
+                                Location = factor(Location))
+
+
+# Subsetting Hell
+
+Batches.300 <- subset(cupcakes, Temp.F == 300)
+Batches.325 <- subset(cupcakes, Temp.F == 325)
+Batches.350 <- subset(cupcakes, Temp.F == 350)
+Batches.375 <- subset(cupcakes, Temp.F == 375)
+
+B1.300 <- subset(Batches.300, Batch.Number == 1)
+B2.300 <- subset(Batches.300, Batch.Number == 2)
+B3.300 <- subset(Batches.300, Batch.Number == 3)
+
+B1.325 <- subset(Batches.325, Batch.Number == 1)
+B2.325 <- subset(Batches.325, Batch.Number == 2)
+B3.325 <- subset(Batches.325, Batch.Number == 3)
+
+B1.350 <- subset(Batches.350, Batch.Number == 1)
+B2.350 <- subset(Batches.350, Batch.Number == 2)
+B3.350 <- subset(Batches.350, Batch.Number == 3)
+
+B1.375 <- subset(Batches.375, Batch.Number == 1)
+B2.375 <- subset(Batches.375, Batch.Number == 2)
+B3.375 <- subset(Batches.375, Batch.Number == 3)
+
+# Building up to a New Dataframe
+
+Temps <- rep(c(300, 325, 350, 375), each = 3)
+
+Batch.Numbers <- rep(1:3, 4)
+
+Study <- c(rep("Experiment", 3), rep(c("Pilot", "Experiment", "Experiment"), 3))
+
+Box.Numbers <- c(B1.300$Box.Number[1],
+                 B2.300$Box.Number[1],
+                 B3.300$Box.Number[1],
+                 
+                 B1.325$Box.Number[1],
+                 B2.325$Box.Number[1],
+                 B3.325$Box.Number[1],
+                 
+                 B1.350$Box.Number[1],
+                 B2.350$Box.Number[1],
+                 B3.350$Box.Number[1],
+                 
+                 B1.375$Box.Number[1],
+                 B2.375$Box.Number[1],
+                 B3.375$Box.Number[1])
+
+Avg.Height <- c(mean(B1.300$Height.cm), mean(B2.300$Height.cm), mean(B3.300$Height.cm),
+              mean(B1.325$Height.cm), mean(B2.325$Height.cm), mean(B3.325$Height.cm),
+              mean(B1.350$Height.cm), mean(B2.350$Height.cm), mean(B3.350$Height.cm),
+              mean(B1.375$Height.cm), mean(B2.375$Height.cm), mean(B3.375$Height.cm))
+
+
+# Mix Ingredients Until Well Combined
+
+cupcakes.new <- data.frame(Study, Temps, Batch.Numbers, Box.Numbers, Avg.Height)
+
+cupcakes.new <- cupcakes.new %>%
+  mutate(Study = factor(Study), Temps.F = factor(Temps), Batch.Numbers = factor(Batch.Numbers), Box.Numbers = factor(Box.Numbers))
+
+# Note: Temps is Quantitative, Temps.F is Categorical
+
+
+cat.mod <- lm(Avg.Height ~ Temps.F, data = cupcakes.new)
+
+cell.means.mod <- lm(Avg.Height ~ Temps.F - 1, data = cupcakes.new)
+```
+
+# I. Introduction
+
+When baking cupcakes, it is generally preferred to have cupcakes that are as tall as possible. Taller cupcakes have a cone shape which is more ideal for frosting compared to flat cupcakes. Cupcake Height serves as a stand-in for many other measures that are more descriptive, but much harder to measure such as cupcake moisture and cupcake density. Thus, this metric is a general stand-in that we seek to optimize. While each box of cupcake mix will provide a recommended baking time and temperature, each individual oven can vary greatly in how it heats up and holds its temperature. These differences in individual oven temperatures can lead to variations in Cupcake Height. We aim to identify the ideal temperature setting on Harley’s oven that will result in the tallest Pillsbury Funfetti Cupcakes; therefore, making the best cupcakes possible in a given amount of time. 
+
+$~$
+
+# II. Experimental Units and Randomization
+
+Our experimental units were each individual batch of six cupcakes. Each experimental unit was baked at an oven temperature setting of either 300$^\circ$F, 325$^\circ$F, 350$^\circ$F, or 375$^\circ$F. The temperatures were assigned to the individual batches of cupcakes on the day of baking in order from lowest to highest temperature to avoid residual heat from a prior higher temperature setting from affecting the baking process of the subsequent batch. If we were to repeat this experiment, oven temperature would ideally be assignment to our experimental units via a completely randomized design, and we would also allow the oven to cool down to room temperature before reheating to the next temperature setting. 
+
+To minimize potential confounding variables, we used the same pan, type of cupcake liners, type of eggs (Eggland's Best Classic Eggs), vegetable oil (Crisco), amount of batter in each liner (¼ cup), and type of batter (Pillsbury Funfetti). Further, we maintained the same cooling time before measuring height (5 minutes), time in the oven (19 minutes), oven (Harley's Oven), method of measuring cupcake height (wooden skewers through the center), oven light status (on), and elevation (1461 m in Bozeman, MT) throughout this experiment. Alternative sources of potential variation which we could not feasibly control for could have stemmed from the cupcake mix itself, environmental factors, and individual variation in measurements. Variation from the cupcake mix may be attributed to the amount and location of sprinkles in each cupcake, and the exact amount of dry ingredients in each cupcake box mix. Environmental sources of variation include humidity and ambient temperature, time that the batter sat at room temperature before baking each batch, and fluctuations in oven temperature while baking. Individual variation in measurements could potentially result from the angle of skewer insertion to measure the height of each cupcake, and the reading of measurement itself. We attempted to reduce variation from these sources by having Harley mix the cake batter each time, Madelaine measured the amount of batter put into each cupcake liner with the same ¼ measuring cup and marked the height of each cupcake on a skewer, while Kyle measured all of the skewer markings against the same ruler. To control for baking inconsistencies due to individual cupcakes’ location in the pan, we decided to calculate the average height of cupcakes in each batch and use this as our response variable.
+
+Unfortunately, we did not cover randomization until we had already run our experiment and collected the data. As a result, we did not randomize which box of cake mix got assigned to which temperature treatment, nor did we randomize the order the batches were baked in the oven. We use the first box of cake mix to obtain our pilot study measurements (first batches at 325, 350, and 375$^\circ$F). For baking order in our pilot run, we decided to bake the first batch of cupcakes at the lowest oven temperature we were testing (325$^\circ$F) and bake the following batches in order of increasing oven temperature (350$^\circ$F and 375$^\circ$F, respectively). We chose this order of treatments to prevent any residual heat from higher oven settings from causing fluctuations in actual baking temperatures. For the remaining boxes of cake mix, we followed the same baking order, baking all batches for a single treatment level before moving up to the next oven temperature setting. Since we added another oven temperature after our pilot study, our first three batches for our main study were baked at 300$^\circ$F, next two at 325$^\circ$F, followed by two at 350$^\circ$F, and the final two batches were baked at 375$^\circ$F. Although our assignment procedure was not a completely randomized design, it allowed us to accurately test oven temperature, so it is a reasonable and valid treatment allocation nonetheless.
+
+
+
+$~$
+
+# III. Pilot Study and Sample Size Calculations
+
+Our pilot study consisted of baking a single batch of cupcakes (6 individual cupcakes total) at each of our three initial treatment levels: 325$^\circ$F, 350$^\circ$F, and 375$^\circ$F. The results of which are included in **Figure 1**. 
+
+### Figure 1: Violin Plots of Pilot Study Data
+```{r Fig1, echo=FALSE,message=FALSE,warning=FALSE, fig.cap = "Enhanced violin plots of the average cupcake height based on oven temperature, when plotting the heights of each individual cupcake in a given batch. Using data from only the pilot study."}
+# Visualizing our Pilot Study Data
+
+cupcakes$Study <- as.factor(cupcakes$Study)
+
+## Subsetting pilot experiment data
+cupcake.pilot <- subset(cupcakes, Study == "pilot")
+
+pirateplot(Height.cm ~ Temp.F, data = cupcake.pilot, main = "Violin Plot of Average Height & Oven Temperature for Pilot Study", inf.method = "ci", inf.disp = "line", ylab = "Height of Individual Cupcakes (cm)", xlab = "Oven Temperature (degrees Fahrenheit)" )
+```
+
+Based on the little variation we saw between cupcake height and oven temperature in our pilot study, and skepticism about whether Harley’s oven runs hot, we decided to add a fourth treatment level of 300$^\circ$F.  
+
+To determine the sample size needed for our full experiment, we used a Shiny app created by Christian Stratton and Jenny Green to look at theoretical power and the sampling distribution of our data as shown in **Figure 2** and **Figure 3** respectively (Stratton, 2021).
+
+### Figure 2: Power Function
+```{r Fig2, echo=FALSE,message=FALSE,warning=FALSE, fig.cap = "This figure shows the power for for detecting differences based on various alternative hypothesis (\theta) values under the specified conditions. In particular, the power for theta = 1."}
+knitr::include_graphics("Project 1 - Power Graph.png")
+```
+
+### Figure 3: Sampling Distribution
+```{r Fig3, echo=FALSE,message=FALSE,warning=FALSE, fig.cap = "This figure shows the sampling distribution under the null and alternative hypotheses." }
+knitr::include_graphics("Project 1 - Sampling Distribution.png")
+```
+
+
+Using the standard deviation from our pilot study, which was 0.173205 cm, the ‘ggplot2’ package was used to find the number of replicates needed at each temperature setting to achieve our ideal power of 0.95. Based on the results in **Figure 4**, our minimum sample number needed to reach this power is 2 batches of cupcakes per treatment group (Wickham, 2016).
+
+
+### Figure 4: Sample Size Determination with Pilot Study
+```{r Fig4, echo=FALSE,message=FALSE,warning=FALSE, fig.cap = "This figure shows the sample size detemination, assuming we'd like our estimated width of our uncertainty interval to be less than 0.5. The standard deviation of the data from the pilot study is 0.173205. Estimate how many samples will be needed to achieve this precision (possibly with probability .95)." }
+sigma <- 0.173205
+r_seq <- 1:25
+estimated_se <- sigma / sqrt(r_seq)
+interval_width <- estimated_se * 4
+combined <- tibble(r = r_seq, width = interval_width)
+combined %>% ggplot(aes(x = r_seq, y = width )) + 
+  geom_line() + theme_bw() + 
+  xlab('sample size') + ylab('uncertainty interval width') +
+  geom_hline(yintercept = 0.5, color = "blue") +
+  ggtitle("Sample Size Determination using Pilot Study SD of 0.173205") +
+    theme(plot.title = element_text(hjust = 0.5))
+```
+_Sample size determination based on the standard deviation (0.173 cm) from the pilot study. You'd need at least_ ___2___ _batches at each temperature to have an estimated uncertainty interval width less than 0.5._
+
+
+After performing our experiment, we did another sample size calculation using the overall experimental standard deviation which was 0.245511 cm. The ‘ggplot2’ package was used to visualize the relationship between this standard deviation, power, and sample size in **Figure 5** (Wickham, 2016). 
+
+
+### Figure 5: Retrospective Sample Size Determination with Complete Experimental Data
+```{r Fig5, echo=FALSE,message=FALSE,warning=FALSE, fig.cap = "This figure shows the sample size detemination, assuming we'd like our estimated width of our uncertainty interval to be less than 0.5. This uses the overall standard deviation of our experiment data which is 0.245511. Estimate how many samples will be needed to achieve this precision (possibly with probability .95)."}
+sigma <- 0.245511
+r_seq <- 1:25
+estimated_se <- sigma / sqrt(r_seq)
+interval_width <- estimated_se * 4
+combined2 <- tibble(r = r_seq, width = interval_width)
+combined2 %>% ggplot(aes(x = r_seq, y = width )) + 
+  geom_line() + theme_bw() + 
+  xlab('sample size') + ylab('uncertainty interval width') +
+  geom_hline(yintercept = 0.5, color = "blue") +
+  ggtitle("Sample Size Determination using Overall Experimental SD of 0.245511") +
+    theme(plot.title = element_text(hjust = 0.5))
+```
+_Sample size determination, based on the standard deviation (0.246 cm) from the overall study data. You'd need at least_ ___4___ _batches at each temperature level to have an estimated uncertainty interval width less than 0.5._ 
+
+In retrospect, we determined that to achieve a power of 0.95, we would have preferred to have 4 batches at each temperature level. However, time constraints prevented us from baking additional batches to achieve the ideal number of replicates at each level.
+
+
+
+$~$
+
+# IV. Data Overview
+
+The average cupcake heights at the four different oven temperatures were visualized in R (R Core Team, 2021) with enhanced violin plots from the ‘yarrr’ package as shown in **Figure 6** (Philips, 2017). 
+
+### Figure 6: Violin Plot of Average Cupcake Height
+```{r Fig6, echo=FALSE,message=FALSE,warning=FALSE, fig.cap = "Enhanced violin plots of average cupcake height based on oven temperature, when only plotting the average heights of each batch."}
+# Only Batch Average Height measurements
+
+pirateplot(Avg.Height ~ Temps.F, data = cupcakes.new, main = "Violin Plot of Average Height and Oven Temperature", inf.method = "ci", inf.disp = "line", ylab = "Average Height of Batch of 6 Cupcakes (cm)", xlab = "Oven Temperature (degrees Fahrenheit)")
+```
+
+
+ Since there were only three data points (average heights of each batch) at each temperature level, we created an additional violin plot with the ‘yarrr’ package which displays all individual cupcake height measurements instead of our batch averages in **Figure 7** (Philips, 2017).
+
+
+### Figure 7: Violin Plot of Individual Cupcake Heights
+```{r Fig7, echo=FALSE,message=FALSE,warning=FALSE, fig.cap = "Enhanced violin plots of the average cupcake height based on oven temperature, when plotting the heights of each individual cupcake in a given batch."}
+# All individual Cupcake Height measurements
+
+pirateplot(Height.cm ~ Temp.F, data = cupcakes, main = "Violin Plot of Average Height and Oven Temperature", inf.method = "ci", inf.disp = "line", ylab = "Cupcake Height (cm)", xlab = "Oven Temperature (degrees Fahrenheit)")
+```
+
+Based on this data visualization, cupcakes baked at 375$^\circ$F had the largest average height at 4.5 cm, followed by cupcakes baked at 325$^\circ$F with an average height of 4.33 cm. Cupcakes baked at 350$^\circ$F were the next tallest with an average height of 4.3 cm, and the shortest cupcakes, on average, were those baked at 300$^\circ$F which had an average height of 4.02 cm. 
+
+
+
+$~$
+
+# V. Data Analysis and Results
+
+In this experiment, oven temperature was our only predictor and had 4 categorical levels (300, 325, 350, and 375$^\circ$F); therefore, we deemed a One-Way Analysis of Variance test appropriate for our data. First, R was used to fit a model that predicts the average height of a batch of cupcakes based on oven temperature levels, using 300 F as a baseline for comparison (R Core Team, 2021) (Model 1). The Reference Case Model (**Model 1**), is as follows:
+
+
+$$\mu(AvgHeight | Temp)_{i} = 4.0222 + 0.3111 \ast I_{Temp = 325} + 0.2778 \ast I_{Temp = 350}+0.4944 \ast I_{Temp = 375} + \epsilon_{i}$$  
+
+With indicator variables defined as follows: $I_{Temp = 325} = 1$ is 1 when $Temperature = 325 ^\circ F$ and 0 otherwise, $I_{Temp = 350} = 1$ is 1 when $Temperature = 350 ^\circ F$, and 0 otherwise, and $I_{Temp = 375} = 1$ is 1 when $Temperature = 375 ^\circ F$ and 0 otherwise. Additionally, $\epsilon$ ~ $N(0, \sigma^2)$ is an error term for $i = 1, 2, ..., 12$ batch of cupcakes.
+
+
+
+The same model, but in Cell Means notation (**Model 2**) is as follows:
+
+
+$$\mu(AvgHeight | Temp)_{i} = 4.0222 \ast I_{Temp = 300} + 4.3333 \ast I_{Temp = 325} + 4.3000 \ast I_{Temp = 350} + 4.5167 \ast I_{Temp = 375} + \epsilon_{i}$$  
+
+With indicator variables defined as follows: $I_{Temp = 300} = 1$ is 1 when $Temperature = 300 ^\circ F$ and 0 otherwise, $I_{Temp = 325} = 1$ is 1 when $Temperature = 325 ^\circ F$ and 0 otherwise, $I_{Temp = 350} = 1$ is 1 when $Temperature = 350 ^\circ F$, and 0 otherwise, and $I_{Temp = 375} = 1$ is 1 when $Temperature = 375 ^\circ F$ and 0 otherwise. Additionally, $\epsilon$ ~ $N(0, \sigma^2)$ is an error term for $i = 1, 2, ..., 12$ batch of cupcakes.   
+
+
+
+This notation is useful because it explicitly states the overall average heights of the cupcakes at each temperature setting. The estimated coefficient for the intercept in the Reference Case Model represents the average batch height for cupcakes baked at 300$^\circ$F in cm. The other estimated coefficients Model 1 represent the average increase in mean height of a batch of cupcakes for the other three oven temperature settings.
+
+
+The multiple R-squared for Model 1 is 0.5657 (R Core Team, 2021). This means the reference case model explains 56.57% of the variation in the average Pillsbury Funfetti cupcake batch height. Although this model explains over half of the total variations in average batch height, it still leaves a lot of variation unexplained. The Standard Suite of diagnostic plots was generated for Model 1 (**Figure 8**) (R Core Team, 2021). 
+
+
+### Figure 8: Model Diagnostics Array for Reference Case Model.
+```{r Fig8, echo=FALSE,results=FALSE,message=FALSE,warning=FALSE, fig.cap = "Diagnostic plots for Model 1 showing Residuals vs Fitted, Normal Q-Q, Scale-Location, and Constant Leverage: Residuals vs Factor Levels Plots."}
+# Standard Model Diagnostics Array
+
+par(mfrow=c(2,2))
+plot(cat.mod, pch=16)
+```
+
+
+The funneling pattern present in the Residual vs. Fitted plot indicates some issues with our constant variance assumption (**Figure 8**). Additionally, the data deviates from the 1:1 Q-Q line in the Normal Q-Q plot suggesting a slight right skew, but not enough to indicate a large departure from normality (**Figure 8**). 
+
+
+
+The multiple R-squared for Model 2 is 0.9987 (R Core Team, 2021). Therefore, Model 2 explains 99.87% of the variation in the average Pillsbury funfetti cupcake batch height and leaves very little variation unexplained. After taking a closer look at Model 2 using standard diagnostic plots, we found a moderate funneling pattern in the Residuals vs. Leverage plot, indicating some deviation from constant variance (**Figure 9**). In the Normal Q-Q plot, there is a short right tail, indicating some right skewness, but not enough to deviate from normality (**Figure 9**). 
+
+
+### Figure 9: Model Diagnostics Array for Cell Means Model
+```{r Fig9, echo=FALSE,results=FALSE,message=FALSE,warning=FALSE, fig.cap = "Diagnostic plots for Model 2 showing Residuals vs Fitted, Normal Q-Q, Scale-Location, and Constant Leverage: Residuals vs Factor Levels Plots."}
+# Standard Model Diagnostics Array
+
+par(mfrow=c(2,2))
+plot(cell.means.mod, pch=16)
+```
+
+Because Model 2 explains notably more variation than Model 1, and no noticeable change in constant variance or normality, Model 2 was chosen as our final model.  
+
+
+To visualize the impact of oven temperature on the average height of a batch of Pillsbury Funfetti Cupcakes, term plots were generated using the ‘effects’ package (Fox and Weisberg, 2019) (**Figure 10**).
+
+### Figure 10: Effects Plot
+```{r Fig10, echo=FALSE,results=FALSE,message=FALSE,warning=FALSE}
+plot(allEffects(cell.means.mod, resid = T), grid = T, main = "Effects Plot of Oven Temperature on Average Cupcake Height", xlab = "Oven Temperature (degrees Fahrenheit)", ylab = "Average Cupcake Height (cm)")
+```
+
+From the term plot, the most extreme differences in average batch heights occur when comparing temperatures 300$^\circ$F and 375$^\circ$F. According to the term plots, the mean cupcake height for treatment group 300$^\circ$F was about 4.02 cm, 4.35 cm for treatment group 325$^\circ$F and 4.30 cm for treatment group 350$^\circ$F. Cupcakes baked at the highest temperature, 375$^\circ$F, had the highest average cupcake height of about 4.50 cm. These average heights were very similar to the average heights in the enhanced violin plots in **Figure 7**.
+
+
+After data visualization, a One-Way Analysis of Variance test was performed on our data (R Core Team, 2021). There was moderately strong evidence found against the null hypothesis that the mean height of a batch of Pillsbury Funfetti cupcakes was the same across all oven temperature settings (F(4,8) = 1538.7, p-value = 1.418 x 10$^{-11}$), suggesting that at least one temperature setting resulted in a different mean cupcake batch height (**Table 1**).  Interestingly, all of the estimated coefficients for the Cell Means Model were detected as “statistically significant”. In a situation like this, it is important to keep in mind that “statistical significance” does not necessarily equate to a meaningful difference. This is exactly why we predetermined that we would consider a meaningful difference in average batch height to be 0.5 cm.
+
+
+
+To explore the One-Way ANOVA results further, we performed Tukey’s HSD post hoc comparisons to determine which temperature level(s) differed using the ‘multcomp’ package in R (Hothorn, 2008). The results of these comparisons are reported in **Table 2** and are displayed in **Figure 11**. 
+
+
+### Figure 11: Tukey's HSD 
+```{r Fig11, echo=FALSE,results=FALSE,message=FALSE,warning=FALSE,}
+
+# Tukey's HSD - POST HOC Comparisons (95% Family-Wise Confidence Level)
+post.hoc <- glht(cell.means.mod, linfct = mcp(Temps.F = "Tukey"))
+
+
+# Plotting Tukey's HSD Results
+
+par(oma=c(2,5,1,1)) 
+par(mar=c(4,4,2,1) + 0.1)
+
+plot(post.hoc, main = "95% Family-Wise Confidence Level", xlab = "Estimated Difference in Average Cupcake Batch Height (cm)")
+title(ylab = "   Oven Temperature Comparisons", line = 3, outer = T)
+title(ylab = "(degrees Fahrenheit)",  line = 1.5, outer = T)
+title(main = "       Tukey's HSD Post Hoc Comparisons", line = 0, outer = T)
+```
+
+After taking a closer look at the differences, it is worth noting that the largest difference in average batch height between the temperature settings occurred between 300$^\circ$F and 375$^\circ$F (**Table 2**). The estimated difference is 0.49444 cm. Since we previously determined a meaningful difference in average cupcake batch height would be 0.5 cm, depending on rounding choices, the difference between these two oven temperature settings could potentially be meaningful. However, **Figure 11** illustrates that we cannot come to that conclusion since the lower bound of the 95% Family Wise Confidence Interval is just below zero.
+
+
+ If this experiment were to be run again, the order in which the individual batches are baked in the oven should be randomized. More explicitly the 12 batches - 3 batches at each of the 4 temperature settings - should be randomly assigned to baking order in the oven. Additionally, our cupcake batter sat out at room temperature between baking each batch. If repeated, accounting for the time the batter spends sitting out could potentially help explain more of the variation in cupcake height across the treatment groups.  Furthermore, the results from this experiment would provide a better estimate of the overall standard deviation to use in power calculations. Lastly, due to time constraints of our project, we made three batches of cupcakes for each treatment level; however, if we were to do this study again, we would have liked to achieve our retrospective sample size calculation.
+
+
+
+$~$
+
+# VI. Discussion
+
+Based on our results, there may be a meaningful difference between cupcake height when comparing baking temperatures 300$^\circ$F and 375$^\circ$F (4.02 cm and 4.5 cm, respectively). All other baking temperature comparisons did not result in a meaningful difference. With this information, we can conclude that baking cupcakes at 375$^\circ$F will result in better cupcakes than baking at 300$^\circ$F, in regards to height alone. Other factors that may contribute to cupcake satisfaction are cupcake moisture, density, and overall taste; further exploration of these qualities would require us to conduct additional experiments. When conducting our experiment, there were noticeable differences in cupcake density and texture, despite there only being marginal differences in cupcake height. 
+
+
+
+
+
+$~$
+$~$
+
+# Appendix
+
+$~$
+
+## References
+
+C. Stratton, J. Green, and A. Hoegh. Not just normal: Exploring power with Shiny apps (2021). Technology Innovations in Statistics Education. https://shiny.stt.msu.edu/jg/powerapp/
+
+D. Sjoberg, K. Whiting, M. Curry, J. Lavery and J. Larmarange. The gtsummary Package: Reproducible Summary Tables with the gtsummary Package (2021). The R Journal, 13(1):570-580. https://doi.org/10.32614/RJ-2021-053.
+
+H. Wickham. The ggplot2 Package: Elegant Graphics for Data Analysis (2016). Springer-Verlag New York. https://ggplot2.tidyverse.org.
+
+J. Fox and S. Weisberg. The effects Package: Visualizing Fit and Lack of Fit in Complex Regression Models with Predictor Effect Plots and Partial Residuals (2018). Journal of Statistical Software, 87(9):1-27. https://doi.org/10.18637/jss.v087.i09. 
+
+N. Phillips. The yarrr Package: A Companion to the e-Book "YaRrr!: The Pirate's Guide to R"  (2017). R package version 0.1.5. https://CRAN.R-project.org/package=yarrr
+
+R Core Team. R: A language and environment for statistical computing (2021). R Foundation for Statistical Computing, Vienna, Austria. https://www.R-project.org/.
+
+T. Hothorn, F. Bretz and P. Westfall. The multcomp Package: Simultaneous Inference in General Parametric Models (2008). Biometrical Journal, 50(3):346-363. http://multcomp.R-forge.R-project.org.
+
+  
+
+
+$~$
+
+## Model Summaries
+
+### Model 1: Reference Case Model
+
+```{r, echo=FALSE,results=FALSE,message=FALSE,warning=FALSE}
+## Reference Case Notation
+cat.mod <- lm(Avg.Height ~ Temps.F, data = cupcakes.new)
+summary(cat.mod)
+```
+
+```{r, fig.align = 'center', echo=FALSE,message=FALSE,warning=FALSE}
+knitr::include_graphics("RefCaseModSum.png")
+```
+
+### Reference Case Model Notation:
+
+$$\mu(AvgHeight | Temp) = 4.0222 + 0.3111 \ast I_{Temp = 325} + 0.2778 \ast I_{Temp = 350}+0.4944 \ast I_{Temp = 375} + \epsilon$$  
+
+With indicator variables defined as follows: $I_{Temp = 325} = 1$ is 1 when $Temperature = 325 ^\circ F$ and 0 otherwise, $I_{Temp = 350} = 1$ is 1 when $Temperature = 350 ^\circ F$, and 0 otherwise, and $I_{Temp = 375} = 1$ is 1 when $Temperature = 375 ^\circ F$ and 0 otherwise. Additionally, $\epsilon$ ~ $N(0, \sigma^2)$ is an error term.
+
+##### Confidence Interval for Reference Case Model Coefficients
+
+Created with the 'gtsummary' package in R (Sjoberg, 2021).
+
+```{r, echo=FALSE,results=TRUE,message=FALSE,warning=FALSE}
+cat.mod %>% tbl_regression() %>% add_global_p() 
+```
+
+
+## Model 2: Cell Means Model
+
+```{r, echo=FALSE,results=FALSE,message=FALSE,warning=FALSE, echo=FALSE,message=FALSE,warning=FALSE}
+cell.means.mod <- lm(Avg.Height ~ Temps.F - 1, data = cupcakes.new)
+summary(cell.means.mod)
+```
+
+```{r, fig.align = 'center', echo=FALSE,message=FALSE,warning=FALSE}
+knitr::include_graphics("CellMeansModSum.png")
+```
+
+### Cell Means Model Notation:
+
+$$\mu(AvgHeight | Temp) = 4.0222 \ast I_{Temp = 300} + 4.3333 \ast I_{Temp = 325} + 4.3000 \ast I_{Temp = 350} + 4.5167 \ast I_{Temp = 375} + \epsilon$$  
+
+With indicator variables defined as follows: $I_{Temp = 300} = 1$ is 1 when $Temperature = 300 ^\circ F$ and 0 otherwise, $I_{Temp = 325} = 1$ is 1 when $Temperature = 325 ^\circ F$ and 0 otherwise, $I_{Temp = 350} = 1$ is 1 when $Temperature = 350 ^\circ F$, and 0 otherwise, and $I_{Temp = 375} = 1$ is 1 when $Temperature = 375 ^\circ F$ and 0 otherwise. Additionally, $\epsilon$ ~ $N(0, \sigma^2)$ is an error term.   
+
+
+##### Confidence Interval for Cell Means Model Coefficients
+
+Created with the 'gtsummary' package in R (Sjoberg, 2021).
+
+```{r, echo=FALSE,results=TRUE,message=FALSE,warning=FALSE}
+cell.means.mod %>% tbl_regression() %>% add_global_p() 
+```
+
+
+$~$
+
+## Tables
+
+
+### Table 1: Summary of One-Way ANOVA Analysis for the Cell Means Model
+```{r, fig.align = 'center', out.width = "400px", echo=FALSE,message=FALSE,warning=FALSE}
+knitr::include_graphics("1WayANOVATable.png")
+```
+
+
+
+### Table 2: Results of Tukey's Post Hoc Comparisons and 95% Family-Wise Confidence Intervals (Cell Means Model)
+```{r, fig.align = 'center', out.width = "400px", echo=FALSE,message=FALSE,warning=FALSE}
+knitr::include_graphics("TukeysHSD.png")
+```
