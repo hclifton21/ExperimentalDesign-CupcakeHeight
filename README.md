@@ -1,11 +1,10 @@
 # ExperimentalDesign-CupcakeHeight
+Authors: Harley Clifton, Madelaine Brown, and Kyle Rutten 
 
 ## Overview
 Investigating the Impacts of Oven Temperature on Pillsbury Funfetti Cupcake Height.
 
 This is a Self Designed Experiment, Pilot Study, Data Collection, Visualization, and Analysis.
-
-Authors: Harley Clifton, Madelaine Brown, and Kyle Rutten 
 
 ## Project Description
 When baking cupcakes, it is generally preferred to have cupcakes that are as tall as possible. Taller cupcakes have a cone shape which is more ideal for frosting compared to flat cupcakes. Cupcake Height serves as a stand-in for many other measures that are more descriptive, but much harder to measure such as cupcake moisture and cupcake density. Thus, this metric is a general stand-in that we seek to optimize. While each box of cupcake mix will provide a recommended baking time and temperature, each individual oven can vary greatly in how it heats up and holds its temperature. These differences in individual oven temperatures can lead to variations in Cupcake Height. We aim to identify the ideal temperature setting on Harley’s oven that will result in the tallest Pillsbury Funfetti Cupcakes; therefore, making the best cupcakes possible in a given amount of time.
