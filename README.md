@@ -26,7 +26,7 @@ The data was gathered by baking cupcakes at different temperatures (300°F, 325�
 
 
 # Results and Evaluation
-Based on our results, there may be a meaningful difference between cupcake height when comparing baking temperatures 300^∘F and 375^∘F (4.02 cm and 4.5 cm, respectively). All other baking temperature comparisons did not result in a meaningful difference. With this information, we can conclude that baking cupcakes at 375^∘F will result in better cupcakes than baking at 300^∘F, in regards to height alone. 
+Based on our results, there may be a meaningful difference between cupcake height when comparing baking temperatures 300°F and 375°F (4.02 cm and 4.5 cm, respectively). All other baking temperature comparisons did not result in a meaningful difference. With this information, we can conclude that baking cupcakes at 375°F will result in better cupcakes than baking at 300°F, in regards to height alone. 
 
 The results indicate that baking at 375°F yields the tallest cupcakes, averaging 4.5 cm. Visualizations of cupcake heights at different temperatures can be found in the Final Report pdf file.
 
