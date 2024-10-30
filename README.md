@@ -25,13 +25,19 @@ The following packages were used:
 
 
 # Data
+Data was collected from experiments conducted at various oven temperatures. The dataset is available in the data/ directory.
 
-## Source Data
-Cupcake Data: Data collected from experiments conducted at various oven temperatures. The dataset is available in the data/ directory.
-
-## Data Acquisition
 The data was gathered by baking cupcakes at different temperatures (300°F, 325°F, 350°F, and 375°F) and measuring their heights.
 
+## Variables
+The following variables were measured:
+
+- Study: pilot or experiment
+- Temp.F: oven temperature in Fahrenheit
+- Batch.Number: batch number, different for each pan that entered the oven
+- Box.Number: indicator variable for the different boxes of cake mix
+- Location: location in pan (1-6)
+- Height.cm: height of the cupcake in centimeters
 
 
 
